@@ -18,6 +18,9 @@ class Settings:
     # Google Gemini API Configuration
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     
+    # Alchemy API Configuration
+    ALCHEMY_API_KEY: str = os.getenv("ALCHEMY_API_KEY", "")
+    
     # API Configuration
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
     API_PORT: int = int(os.getenv("API_PORT", "8000"))
@@ -34,6 +37,8 @@ class Settings:
             return False, "DATABASE_URL is not set in environment variables"
         if not self.GOOGLE_API_KEY:
             return False, "GOOGLE_API_KEY is not set in environment variables"
+        if not self.ALCHEMY_API_KEY:
+            return False, "ALCHEMY_API_KEY is not set in environment variables"
         return True, None
 
 

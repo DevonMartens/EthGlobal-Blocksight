@@ -22,3 +22,8 @@ python-dotenv
 
 # Optional but recommended
 httpx  # For async HTTP requests
+
+# Blockchain/Web3
+web3
+eth-utils
+aiohttp

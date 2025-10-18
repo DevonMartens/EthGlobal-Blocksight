@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
-from api.routes import query_routes
+from api.routes import query_routes, wallet_routes
 
 # Validate settings on startup
 is_valid, error_message = settings.validate()
@@ -38,6 +38,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(query_routes.router)
+app.include_router(wallet_routes.router)
 
 
 @app.get("/")
