@@ -3,6 +3,7 @@ API routes for wallet data endpoints.
 Provides streaming and parallel-fetch endpoints for blockchain data.
 """
 import json
+import asyncio
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -101,11 +102,19 @@ async def stream_wallet_transfers(
                 include_nft,
                 direction
             ):
-                yield f"data: {json.dumps(batch)}\n\n"
+                # Yield the data
+                data = f"data: {json.dumps(batch)}\n\n"
+                yield data.encode('utf-8')
+                
+                # Force a small delay to allow the response to flush
+                await asyncio.sleep(0.01)
             
-            yield f"data: {json.dumps({'type': 'complete', 'message': 'Transfer fetch complete'})}\n\n"
+            # Send completion message
+            completion = f"data: {json.dumps({'type': 'complete', 'message': 'Transfer fetch complete'})}\n\n"
+            yield completion.encode('utf-8')
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            error = f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield error.encode('utf-8')
     
     return StreamingResponse(
         event_generator(),
@@ -113,6 +122,7 @@ async def stream_wallet_transfers(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
         }
     )
 
@@ -156,11 +166,19 @@ async def stream_wallet_nfts(
     async def event_generator():
         try:
             async for batch in wallet_service.stream_nfts(resolved_address, page_size):
-                yield f"data: {json.dumps(batch)}\n\n"
+                # Yield the data
+                data = f"data: {json.dumps(batch)}\n\n"
+                yield data.encode('utf-8')
+                
+                # Force a small delay to allow the response to flush
+                await asyncio.sleep(0.01)
             
-            yield f"data: {json.dumps({'type': 'complete', 'message': 'NFT fetch complete'})}\n\n"
+            # Send completion message
+            completion = f"data: {json.dumps({'type': 'complete', 'message': 'NFT fetch complete'})}\n\n"
+            yield completion.encode('utf-8')
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            error = f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield error.encode('utf-8')
     
     return StreamingResponse(
         event_generator(),
@@ -168,6 +186,7 @@ async def stream_wallet_nfts(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
         }
     )
 
