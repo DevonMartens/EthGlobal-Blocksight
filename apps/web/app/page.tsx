@@ -105,9 +105,47 @@ export default function Home() {
         <div className="space-y-8">
           {/* Address Input Section */}
           <div className="bg-gray-800 p-8 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-white">
-              Ethereum Addresses
-            </h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-white">
+                Ethereum Addresses
+              </h2>
+
+              {/* Network Switch */}
+              <div className="flex items-center space-x-3">
+                <span
+                  className={`text-sm transition-colors ${
+                    network === "sepolia"
+                      ? "text-blue-400 font-semibold"
+                      : "text-gray-300"
+                  }`}
+                >
+                  Sepolia
+                </span>
+                <button
+                  onClick={() =>
+                    setNetwork(network === "mainnet" ? "sepolia" : "mainnet")
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
+                    network === "mainnet" ? "bg-blue-600" : "bg-gray-600"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      network === "mainnet" ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span
+                  className={`text-sm transition-colors ${
+                    network === "mainnet"
+                      ? "text-blue-400 font-semibold"
+                      : "text-gray-300"
+                  }`}
+                >
+                  Mainnet
+                </span>
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div>
@@ -155,23 +193,6 @@ export default function Home() {
                 </ul>
               </div>
             )}
-          </div>
-
-          {/* Network Selection */}
-          <div className="bg-gray-800 p-8 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-white">
-              Network Selection
-            </h2>
-            <select
-              value={network}
-              onChange={(e) =>
-                setNetwork(e.target.value as "mainnet" | "sepolia")
-              }
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="mainnet">Mainnet</option>
-              <option value="sepolia">Sepolia</option>
-            </select>
           </div>
 
           {/* Start Fetching Button */}
