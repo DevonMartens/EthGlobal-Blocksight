@@ -1,0 +1,29 @@
+# Core Dependencies
+langchain==0.3.13
+langchain-openai
+langchain-community
+langchain-core
+langchain-google-genai
+
+# Database
+SQLAlchemy
+psycopg2-binary
+
+# API Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.5
+
+# Data Processing
+pandas
+
+# Configuration
+python-dotenv
+
+# Optional but recommended
+httpx  # For async HTTP requests
+
+# Blockchain/Web3
+web3
+eth-utils
+aiohttp
