@@ -14,51 +14,6 @@ from api.services.wallet_service import wallet_service
 router = APIRouter(prefix="/api/v1/wallet", tags=["wallet"])
 
 
-class WalletMetadataResponse(BaseModel):
-    """Response model for wallet metadata."""
-    address: str
-    ens: Optional[str] = None
-    ethBalance: str
-    ethBalanceFormatted: str
-    transactionCount: int
-
-
-class TokenBalancesResponse(BaseModel):
-    """Response model for token balances."""
-    address: str
-    tokenBalances: List[Dict[str, Any]]
-
-
-class DerivedStatsResponse(BaseModel):
-    """Response model for derived statistics."""
-    totalEthInWei: str
-    totalEthOutWei: str
-    totalEthInFormatted: str
-    totalEthOutFormatted: str
-    netEthFormatted: str
-    tokenContracts: List[str]
-    totalTransfers: int
-    uniqueTransactions: int
-
-
-@router.get("/{address}/metadata", response_model=WalletMetadataResponse)
-async def get_wallet_metadata(address: str):
-    """
-    Get wallet metadata including balance, transaction count, and ENS.
-    
-    Args:
-        address: Ethereum address or ENS name
-    """
-    try:
-        resolved_address = await wallet_service.resolve_address(address)
-        metadata = await wallet_service.get_metadata(resolved_address)
-        return metadata
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch metadata: {str(e)}")
-
-
 @router.get("/{address}/transfers/stream")
 async def stream_wallet_transfers(
     address: str,
@@ -127,10 +82,11 @@ async def stream_wallet_transfers(
     )
 
 
-@router.get("/{address}/tokens", response_model=TokenBalancesResponse)
+@router.get("/{address}/tokens")
 async def get_wallet_token_balances(address: str):
     """
-    Get ERC-20 token balances for a wallet.
+    Get ERC-20 token balances with metadata and prices for a wallet.
+    Returns enriched token data including metadata, prices, and network information.
     
     Args:
         address: Ethereum address or ENS name
@@ -191,88 +147,78 @@ async def stream_wallet_nfts(
     )
 
 
-@router.post("/{address}/stats", response_model=DerivedStatsResponse)
-async def calculate_derived_stats(
-    address: str,
-    transfers: List[Dict[str, Any]]
-):
-    """
-    Calculate derived statistics from transfer data.
-    
-    Args:
-        address: Ethereum address
-        transfers: List of transfer objects (from transfers endpoint)
-    """
-    try:
-        resolved_address = await wallet_service.resolve_address(address)
-        stats = await wallet_service.get_derived_stats(resolved_address, transfers)
-        return stats
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate stats: {str(e)}")
-
-
 @router.get("/{address}/full")
 async def get_wallet_full_data(
     address: str,
-    include_nft: bool = Query(True, description="Include NFT data"),
-    max_transfers: int = Query(0, description="Max transfers per direction (0 = unlimited)"),
+    include_nft: bool = Query(False, description="Include NFT data (default: false for performance)"),
+    max_transfers: int = Query(100, description="Max transfers per direction (default: 100, max: 10000)"),
     direction: str = Query("both", description="Direction: 'from', 'to', or 'both'")
 ):
     """
-    Get all wallet data in one request (not streaming).
-    For large wallets, use the individual streaming endpoints instead.
+    Get wallet data in one request (not streaming).
+    For large wallets or more data, use the individual streaming endpoints.
     
     Args:
         address: Ethereum address or ENS name
-        include_nft: Include NFT data
-        max_transfers: Maximum transfers per direction (0 = unlimited)
+        include_nft: Include NFT data (default: false for performance)
+        max_transfers: Maximum transfers per direction (default: 100, capped at 10000)
         direction: Transfer direction - "from", "to", or "both"
     
     Returns:
-        Complete wallet data including metadata, transfers, tokens, and NFTs
+        Wallet data including limited transfers, tokens, and optionally NFTs
     """
     if direction not in ["from", "to", "both"]:
         raise HTTPException(status_code=400, detail="direction must be 'from', 'to', or 'both'")
     
+    # Cap max_transfers at 10000 per direction to prevent timeouts
+    max_transfers = min(max_transfers, 10000) if max_transfers > 0 else 100
+    
     try:
         resolved_address = await wallet_service.resolve_address(address)
         
-        # Fetch metadata
-        metadata = await wallet_service.get_metadata(resolved_address)
+        # Run all fetches in parallel using asyncio.gather
+        async def fetch_transfers():
+            transfers = []
+            count = 0
+            async for batch in wallet_service.stream_transfers(
+                resolved_address,
+                "0x0",
+                max_transfers,
+                False,  # Don't include NFTs in transfers
+                direction
+            ):
+                transfers.extend(batch.get("data", []))
+                count += 1
+                # Limit to prevent too many batches
+                if count >= 10:  # Max 10 batches
+                    break
+            return transfers
         
-        # Collect all transfers
-        all_transfers = []
-        async for batch in wallet_service.stream_transfers(
-            resolved_address,
-            "0x0",
-            max_transfers,
-            include_nft,
-            direction
-        ):
-            all_transfers.extend(batch.get("data", []))
+        async def fetch_nfts():
+            if not include_nft:
+                return None
+            nfts = []
+            count = 0
+            async for batch in wallet_service.stream_nfts(resolved_address, page_size=100):
+                nfts.extend(batch.get("data", []))
+                count += 1
+                # Limit to first 200 NFTs (2 batches)
+                if count >= 2:
+                    break
+            return {"ownedNfts": nfts, "totalCount": len(nfts)}
         
-        # Fetch token balances
-        token_balances = await wallet_service.get_token_balances(resolved_address)
-        
-        # Fetch NFTs if requested
-        nfts = None
-        if include_nft:
-            all_nfts = []
-            async for batch in wallet_service.stream_nfts(resolved_address):
-                all_nfts.extend(batch.get("data", []))
-            nfts = {"ownedNfts": all_nfts, "totalCount": len(all_nfts)}
-        
-        # Calculate derived stats
-        derived_stats = await wallet_service.get_derived_stats(resolved_address, all_transfers)
+        # Fetch all data in parallel
+        transfers, token_balances, nfts = await asyncio.gather(
+            fetch_transfers(),
+            wallet_service.get_token_balances(resolved_address),
+            fetch_nfts(),
+            return_exceptions=False
+        )
         
         return {
-            "metadata": metadata,
-            "transfers": all_transfers,
+            "transfers": transfers,
             "tokenBalances": token_balances,
-            "nfts": nfts,
-            "derivedStats": derived_stats
+            "nfts": nfts
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -27,3 +27,5 @@ httpx  # For async HTTP requests
 web3
 eth-utils
 aiohttp
+alchemy-sdk
+dataclass-wizard
