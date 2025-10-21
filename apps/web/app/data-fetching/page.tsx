@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useResults } from "../context/ResultsContext";
 
 interface FetchProgress {
   address: string;
@@ -13,11 +14,11 @@ interface FetchProgress {
 export default function DataFetchingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { results, setResults } = useResults();
   const [addresses, setAddresses] = useState<string[]>([]);
   const [network, setNetwork] = useState<"mainnet" | "sepolia">("mainnet");
   const [fetchProgress, setFetchProgress] = useState<FetchProgress[]>([]);
   const [isComplete, setIsComplete] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
 
   useEffect(() => {
     // Get addresses and network from URL params
@@ -82,7 +83,7 @@ export default function DataFetchingPage() {
         });
 
         const response = await fetch(
-          `/api/v1/wallet/${address}/full?${queryParams.toString()}`
+          `http://localhost:8000/api/v1/wallet/${address}/full?${queryParams.toString()}`
         );
 
         if (!response.ok) {
@@ -288,8 +289,9 @@ export default function DataFetchingPage() {
           {isComplete && (
             <button
               onClick={() => {
-                // TODO: Navigate to results page or show results
-                console.log("Results:", results);
+                // Store results in context and navigate to dashboard
+                setResults(results);
+                router.push("/dashboard");
               }}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white transition-all duration-200"
             >
