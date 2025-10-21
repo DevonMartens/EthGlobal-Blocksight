@@ -75,14 +75,16 @@ export default function Home() {
       return;
     }
 
-    // Navigate to data fetching page (to be implemented)
-    console.log(
-      "Starting fetch for addresses:",
-      addressList,
-      "on network:",
-      network
-    );
-    // TODO: Navigate to /data-fetching route
+    // Navigate to data fetching page with addresses and network as URL params
+    const params = new URLSearchParams({
+      addresses: addressList.join(","),
+      network: network,
+      include_nft: "true",
+      max_transfers: "300",
+      direction: "both",
+    });
+
+    window.location.href = `/data-fetching?${params.toString()}`;
   };
 
   const isValid = validationErrors.length === 0 && addresses.trim().length > 0;
