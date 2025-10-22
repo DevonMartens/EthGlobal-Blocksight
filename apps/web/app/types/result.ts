@@ -187,3 +187,45 @@ export type GasAnalysis = {
     to: string;
   } | null;
 };
+
+export type TokenDistributionAnalysis = {
+  distribution: BalanceDistribution[];
+  whales: WhaleWallet[];
+  concentration: ConcentrationMetrics;
+  balanceStats: BalanceStatistics;
+};
+
+export type BalanceDistribution = {
+  range: string;
+  minBalance: number;
+  maxBalance: number;
+  count: number;
+  percentage: number;
+  totalBalance: number;
+};
+
+export type WhaleWallet = {
+  address: string;
+  balance: number;
+  percentageOfTotal: number;
+  rank: number;
+  activityIndex: number;
+  transactionCount: number;
+};
+
+export type ConcentrationMetrics = {
+  giniCoefficient: number;
+  top10Percentage: number;
+  top20Percentage: number;
+  herfindahlIndex: number;
+  concentrationLevel: "Very High" | "High" | "Moderate" | "Low" | "Very Low";
+};
+
+export type BalanceStatistics = {
+  totalBalance: number;
+  averageBalance: number;
+  medianBalance: number;
+  maxBalance: number;
+  minBalance: number;
+  standardDeviation: number;
+};

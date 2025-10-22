@@ -14,6 +14,7 @@ import {
   OverviewStats,
   WalletWithActivity,
   TransactionInsights,
+  TokenDistributionAnalysis,
 } from "../types/result";
 import OverviewCards from "../dashboard/_components/OverviewCard";
 import ActivityDistribution from "../dashboard/_components/ActivityDistribution";
@@ -21,6 +22,132 @@ import TransactionTimeline from "../dashboard/_components/TransactionTimeline";
 import MostActiveWallets from "../dashboard/_components/MostActiveWallet";
 import TransactionPatternsCard from "../dashboard/_components/TransactionPattern";
 import GasAnalysisCard from "../dashboard/_components/GasAnalysis";
+import { getTokenDistributionAnalysis } from "../aux/tokenDistribution";
+import BalanceDistributionChart from "./_components/BalanceDistributionChart";
+import ConcentrationMetricsCard from "./_components/ConcentrationMetrics";
+import QueryInterface from "./_components/QueryInterface";
+
+// Tab component
+interface TabProps {
+  id: string;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+function Tab({ id, label, isActive, onClick }: TabProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 font-medium text-sm transition-colors duration-200 rounded-t-lg ${
+        isActive
+          ? "bg-gray-800 text-white border-b-2 border-blue-500"
+          : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+// Dashboard content component (moved from main component)
+interface DashboardContentProps {
+  addresses: string[];
+  network: string;
+  overviewStats: OverviewStats | null;
+  walletsWithActivity: WalletWithActivity[];
+  transactionInsights: TransactionInsights | null;
+  timelineGroupBy: "day" | "week" | "month";
+  setTimelineGroupBy: (value: "day" | "week" | "month") => void;
+  tokenDistribution: TokenDistributionAnalysis | null;
+}
+
+function DashboardContent({
+  addresses,
+  network,
+  overviewStats,
+  walletsWithActivity,
+  transactionInsights,
+  timelineGroupBy,
+  setTimelineGroupBy,
+  tokenDistribution,
+}: DashboardContentProps) {
+  return (
+    <div className="space-y-8">
+      {/* Overview Section */}
+      <section>
+        <h2 className="text-2xl font-bold text-white mb-4">📊 Overview</h2>
+        <OverviewCards data={overviewStats} />
+      </section>
+
+      {/* Activity Distribution */}
+      <section>
+        <ActivityDistribution wallets={walletsWithActivity} />
+      </section>
+
+      {/* Transaction Insights Section */}
+      <section>
+        <h2 className="text-2xl font-bold text-white mb-4">
+          💸 Transaction Insights
+        </h2>
+
+        {/* Timeline */}
+        <div className="mb-6">
+          {transactionInsights && (
+            <TransactionTimeline
+              data={transactionInsights.timeline}
+              groupBy={timelineGroupBy}
+              onGroupByChange={setTimelineGroupBy}
+            />
+          )}
+        </div>
+
+        {/* Most Active Wallets */}
+        <div className="mb-6">
+          {transactionInsights && (
+            <MostActiveWallets
+              wallets={transactionInsights.mostActiveWallets}
+            />
+          )}
+        </div>
+
+        {/* Transaction Patterns and Gas Analysis */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {transactionInsights && (
+            <>
+              <TransactionPatternsCard data={transactionInsights.patterns} />
+              <GasAnalysisCard data={transactionInsights.gasAnalysis} />
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Token Distribution Section */}
+      <section>
+        <h2 className="text-2xl font-bold text-white mb-4">
+          💰 Token Distribution
+        </h2>
+
+        {tokenDistribution && (
+          <>
+            {/* Balance Distribution */}
+            <div className="mb-6">
+              <BalanceDistributionChart data={tokenDistribution.distribution} />
+            </div>
+
+            {/* Concentration Metrics */}
+            <div className="mb-6">
+              <ConcentrationMetricsCard
+                concentration={tokenDistribution.concentration}
+                stats={tokenDistribution.balanceStats}
+              />
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -38,6 +165,9 @@ export default function DashboardPage() {
   const [timelineGroupBy, setTimelineGroupBy] = useState<
     "day" | "week" | "month"
   >("day");
+  const [tokenDistribution, setTokenDistribution] =
+    useState<TokenDistributionAnalysis | null>(null);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ai">("dashboard");
 
   console.log(results);
 
@@ -58,10 +188,12 @@ export default function DashboardPage() {
     const overview = aggregateOverview(results);
     const wallets = getWalletsWithActivity(results);
     const insights = getTransactionInsights(results, timelineGroupBy);
+    const distribution = getTokenDistributionAnalysis(results);
 
     setOverviewStats(overview);
     setWalletsWithActivity(wallets);
     setTransactionInsights(insights);
+    setTokenDistribution(distribution);
   }, [results, router, timelineGroupBy]);
 
   const handleClearResults = () => {
@@ -73,7 +205,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-900 text-white">
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="bg-gray-800 p-8 border border-gray-700 rounded-lg">
             <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               DAO Wallet Analytics Dashboard
@@ -85,53 +217,40 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Overview Section */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">📊 Overview</h2>
-          <OverviewCards data={overviewStats} />
-        </section>
-
-        {/* Activity Distribution */}
-        <section className="mb-8">
-          <ActivityDistribution wallets={walletsWithActivity} />
-        </section>
-
-        {/* Transaction Insights Section */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">
-            💸 Transaction Insights
-          </h2>
-
-          {/* Timeline */}
-          <div className="mb-6">
-            {transactionInsights && (
-              <TransactionTimeline
-                data={transactionInsights.timeline}
-                groupBy={timelineGroupBy}
-                onGroupByChange={setTimelineGroupBy}
-              />
-            )}
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-gray-700 p-1 rounded-lg w-fit mx-auto">
+            <Tab
+              id="dashboard"
+              label="Dashboard"
+              isActive={activeTab === "dashboard"}
+              onClick={() => setActiveTab("dashboard")}
+            />
+            <Tab
+              id="ai"
+              label="AI"
+              isActive={activeTab === "ai"}
+              onClick={() => setActiveTab("ai")}
+            />
           </div>
+        </div>
 
-          {/* Most Active Wallets */}
-          <div className="mb-6">
-            {transactionInsights && (
-              <MostActiveWallets
-                wallets={transactionInsights.mostActiveWallets}
-              />
-            )}
-          </div>
-
-          {/* Transaction Patterns and Gas Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {transactionInsights && (
-              <>
-                <TransactionPatternsCard data={transactionInsights.patterns} />
-                <GasAnalysisCard data={transactionInsights.gasAnalysis} />
-              </>
-            )}
-          </div>
-        </section>
+        {/* Tab Content */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          {activeTab === "dashboard" && (
+            <DashboardContent
+              addresses={addresses}
+              network={network}
+              overviewStats={overviewStats}
+              walletsWithActivity={walletsWithActivity}
+              transactionInsights={transactionInsights}
+              timelineGroupBy={timelineGroupBy}
+              setTimelineGroupBy={setTimelineGroupBy}
+              tokenDistribution={tokenDistribution}
+            />
+          )}
+          {activeTab === "ai" && <QueryInterface />}
+        </div>
 
         {/* Navigation */}
         <div className="text-center mt-8 space-x-4">
