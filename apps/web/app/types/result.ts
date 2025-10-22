@@ -1,4 +1,4 @@
-type Transfer = {
+export type Transfer = {
   blockNum: string;
   uniqueId: string;
   hash: string;
@@ -139,4 +139,51 @@ export type WalletWithActivity = {
   totalVolume: number;
   balance: number;
   lastActivityDate: Date | null;
+};
+
+export type TransactionInsights = {
+  timeline: TimelineDataPoint[];
+  mostActiveWallets: ActiveWallet[];
+  patterns: TransactionPatterns;
+  gasAnalysis: GasAnalysis;
+};
+
+export type TimelineDataPoint = {
+  date: string;
+  volume: number;
+  count: number;
+  displayDate: string; // For chart display
+};
+
+export type ActiveWallet = {
+  address: string;
+  transactionCount: number;
+  totalVolume: number;
+  incomingCount: number;
+  outgoingCount: number;
+  averageTransactionSize: number;
+  activityIndex: number;
+};
+
+export type TransactionPatterns = {
+  totalIncoming: number;
+  totalOutgoing: number;
+  incomingVolume: number;
+  outgoingVolume: number;
+  averageIncomingSize: number;
+  averageOutgoingSize: number;
+  internalTransactions: number;
+  externalTransactions: number;
+};
+
+export type GasAnalysis = {
+  totalGasSpent: number;
+  averageGasPerTransaction: number;
+  estimatedCostUSD: number; // Estimated based on average ETH price
+  highestGasTransaction: {
+    hash: string;
+    gasSpent: number;
+    from: string;
+    to: string;
+  } | null;
 };

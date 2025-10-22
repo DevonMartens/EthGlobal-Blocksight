@@ -78,7 +78,7 @@ export default function DataFetchingPage() {
         // Make API call
         const queryParams = new URLSearchParams({
           include_nft: "true",
-          max_transfers: "300",
+          max_transfers: "150",
           direction: "both",
         });
 
