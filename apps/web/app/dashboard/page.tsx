@@ -3,12 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useResults } from "../context/ResultsContext";
+import ActivityDistribution from "./_components/ActivityDistribution";
+import OverviewCards from "./_components/OverviewCard";
+import {
+  aggregateOverview,
+  getWalletsWithActivity,
+} from "../aux/dataAggregation";
+import { OverviewStats, WalletWithActivity } from "../types/result";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { results, clearResults } = useResults();
   const [addresses, setAddresses] = useState<string[]>([]);
   const [network, setNetwork] = useState<string>("");
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(
+    null
+  );
+  const [walletsWithActivity, setWalletsWithActivity] = useState<
+    WalletWithActivity[]
+  >([]);
+
+  console.log(results);
 
   useEffect(() => {
     // Check if we have results in context
@@ -21,7 +36,14 @@ export default function DashboardPage() {
     // Extract addresses from results
     const addressList = results.map((result) => result.address);
     setAddresses(addressList);
-    setNetwork("mainnet"); // You might want to store this in context too
+    setNetwork("mainnet");
+
+    // Aggregate data
+    const overview = aggregateOverview(results);
+    const wallets = getWalletsWithActivity(results);
+
+    setOverviewStats(overview);
+    setWalletsWithActivity(wallets);
   }, [results, router]);
 
   const handleClearResults = () => {
@@ -45,22 +67,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Results Display */}
-        <div className="space-y-6">
-          {results.map((result, index) => (
-            <div key={index} className="bg-gray-800 p-6 border border-gray-700">
-              <h3 className="text-xl font-semibold mb-4 text-blue-400">
-                {result.address}
-              </h3>
+        <div className="p-8">
+          <h1 className="text-3xl font-bold mb-8">DAO Wallet Analytics</h1>
 
-              {/* Display the actual data here */}
-              <div className="bg-gray-700 p-4 rounded">
-                <pre className="text-sm text-gray-300 overflow-auto">
-                  {JSON.stringify(result.data, null, 2)}
-                </pre>
-              </div>
-            </div>
-          ))}
+          {/* Overview Cards */}
+          <OverviewCards data={overviewStats} />
+
+          {/* Activity Distribution */}
+          <ActivityDistribution wallets={walletsWithActivity} />
         </div>
 
         {/* Navigation */}
