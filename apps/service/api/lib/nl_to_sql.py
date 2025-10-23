@@ -1,7 +1,7 @@
 import os
 from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
-from langchain.chains import create_sql_query_chain
+from langchain_classic.chains import create_sql_query_chain
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from openai import APIError, Timeout

@@ -20,6 +20,7 @@ class Settings:
     
     # Alchemy API Configuration
     ALCHEMY_API_KEY: str = os.getenv("ALCHEMY_API_KEY", "")
+    BLOCKSCOUT_MCP_URL:str = os.getenv("BLOCKSCOUT_MCP_URL", "")
     
     # API Configuration
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")

@@ -136,7 +136,6 @@ def load_data_from_json(database: SQLDatabase):
         with open(os.path.join(DATA_DIR, 'nfts.json'), 'r') as f:
             nft_data = json.load(f)
 
-        # **THE FIX**: Iterate over the 'ownedNfts' list within the JSON object.
         owned_nfts_list = nft_data.get('ownedNfts', [])
         loaded_count = 0
         
