@@ -72,6 +72,8 @@ function DashboardContent({
   setTimelineGroupBy,
   tokenDistribution,
 }: DashboardContentProps) {
+  const isMultipleWallets = addresses.length > 1;
+
   return (
     <div className="space-y-8">
       {/* Overview Section */}
@@ -80,10 +82,12 @@ function DashboardContent({
         <OverviewCards data={overviewStats} />
       </section>
 
-      {/* Activity Distribution */}
-      <section>
-        <ActivityDistribution wallets={walletsWithActivity} />
-      </section>
+      {/* Activity Distribution - Only for multiple wallets */}
+      {isMultipleWallets && (
+        <section>
+          <ActivityDistribution wallets={walletsWithActivity} />
+        </section>
+      )}
 
       {/* Transaction Insights Section */}
       <section>
@@ -122,29 +126,31 @@ function DashboardContent({
         </div>
       </section>
 
-      {/* Token Distribution Section */}
-      <section>
-        <h2 className="text-2xl font-bold text-white mb-4">
-          💰 Token Distribution
-        </h2>
+      {/* Token Distribution Section - Only for multiple wallets */}
+      {isMultipleWallets && (
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            💰 Token Distribution
+          </h2>
 
-        {tokenDistribution && (
-          <>
-            {/* Balance Distribution */}
-            <div className="mb-6">
-              <BalanceDistributionChart data={tokenDistribution.distribution} />
-            </div>
+          {tokenDistribution && (
+            <>
+              {/* Balance Distribution */}
+              <div className="mb-6">
+                <BalanceDistributionChart data={tokenDistribution.distribution} />
+              </div>
 
-            {/* Concentration Metrics */}
-            <div className="mb-6">
-              <ConcentrationMetricsCard
-                concentration={tokenDistribution.concentration}
-                stats={tokenDistribution.balanceStats}
-              />
-            </div>
-          </>
-        )}
-      </section>
+              {/* Concentration Metrics */}
+              <div className="mb-6">
+                <ConcentrationMetricsCard
+                  concentration={tokenDistribution.concentration}
+                  stats={tokenDistribution.balanceStats}
+                />
+              </div>
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

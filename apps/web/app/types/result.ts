@@ -174,6 +174,8 @@ export type TransactionPatterns = {
   averageOutgoingSize: number;
   internalTransactions: number;
   externalTransactions: number;
+  internalVolume: number;
+  externalVolume: number;
 };
 
 export type GasAnalysis = {
