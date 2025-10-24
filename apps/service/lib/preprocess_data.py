@@ -44,6 +44,20 @@ def get_schema():
         PRIMARY KEY (wallet_address, contract_address, token_id),
         FOREIGN KEY (wallet_address) REFERENCES wallets(address)
     );
+
+    CREATE TABLE protocol_interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT NOT NULL,
+        protocol TEXT NOT NULL,
+        action TEXT,
+        amount_usd REAL,
+        block_number INTEGER,
+        block_time TIMESTAMP,
+        transaction_hash TEXT,
+        raw_data TEXT, -- Stores the entire interaction JSON object
+        FOREIGN KEY (wallet_address) REFERENCES wallets(address),
+        FOREIGN KEY (transaction_hash) REFERENCES transactions(hash)
+    );
     """
 
 def setup_database_schema(database: SQLDatabase):

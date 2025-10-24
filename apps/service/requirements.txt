@@ -1,5 +1,14 @@
 langchain
 langchain-openai
 langchain_community
+langchain-google-genai
 python-dotenv
 SQLAlchemy
+fastapi
+uvicorn
+openai
+pydantic
+pandas
+psycopg2-binary
+uagents>=0.12.0
+uagents-core
