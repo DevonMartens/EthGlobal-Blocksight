@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useResults } from "../context/ResultsContext";
+import { config } from "../aux/config";
 
 interface FetchProgress {
   address: string;
@@ -83,7 +84,10 @@ function DataFetchingContent() {
         });
 
         const response = await fetch(
-          `http://localhost:8000/api/v1/wallet/${address}/full?${queryParams.toString()}`
+          config.API_ENDPOINTS.WALLET_FULL(
+            address || "",
+            queryParams.toString()
+          )
         );
 
         if (!response.ok) {
@@ -306,14 +310,16 @@ function DataFetchingContent() {
 
 export default function DataFetchingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <DataFetchingContent />
     </Suspense>
   );

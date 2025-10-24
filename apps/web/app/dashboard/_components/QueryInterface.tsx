@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { config } from "../../aux/config";
 
 interface QueryRequest {
   question: string;
@@ -36,7 +37,7 @@ function QueryInterface() {
         question: query.trim(),
       };
 
-      const response = await fetch("http://localhost:8000/api/v1/query", {
+      const response = await fetch(config.API_ENDPOINTS.QUERY, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
