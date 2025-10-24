@@ -116,7 +116,7 @@ type TokenBalance = {
 export type Result = {
   address: string;
   data: {
-    nfts: NFT[];
+    nfts: NFT;
     transfers: Transfer[];
     tokenBalances: TokenBalance;
   };

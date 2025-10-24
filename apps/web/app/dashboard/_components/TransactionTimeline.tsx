@@ -26,8 +26,6 @@ export default function TransactionTimeline({
   groupBy,
   onGroupByChange,
 }: TransactionTimelineProps) {
-  console.log("---", data);
-
   if (data.length === 0) {
     return (
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">

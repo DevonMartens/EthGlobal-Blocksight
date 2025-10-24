@@ -26,6 +26,13 @@ import { getTokenDistributionAnalysis } from "../aux/tokenDistribution";
 import BalanceDistributionChart from "./_components/BalanceDistributionChart";
 import ConcentrationMetricsCard from "./_components/ConcentrationMetrics";
 import QueryInterface from "./_components/QueryInterface";
+import { getNFTAnalytics } from "../aux/nftAnalysis";
+import { NFTAnalytics } from "../types/nft";
+import NFTAdoption from "../dashboard/_components/NftAdoption";
+import TopNFTCollections from "../dashboard/_components/NftCollections";
+import NFTDiversityMetricsCard from "../dashboard/_components/NftDiversityMetrics";
+import SpamNFTAnalysis from "../dashboard/_components/NftSpamAnalysis";
+import RecentNFTAcquisitions from "../dashboard/_components/RecentNftAcquisition";
 
 // Tab component
 interface TabProps {
@@ -137,7 +144,9 @@ function DashboardContent({
             <>
               {/* Balance Distribution */}
               <div className="mb-6">
-                <BalanceDistributionChart data={tokenDistribution.distribution} />
+                <BalanceDistributionChart
+                  data={tokenDistribution.distribution}
+                />
               </div>
 
               {/* Concentration Metrics */}
@@ -173,9 +182,10 @@ export default function DashboardPage() {
   >("day");
   const [tokenDistribution, setTokenDistribution] =
     useState<TokenDistributionAnalysis | null>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "ai">("dashboard");
-
-  console.log(results);
+  const [nftAnalytics, setNftAnalytics] = useState<NFTAnalytics | null>(null);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ai" | "nft">(
+    "dashboard"
+  );
 
   useEffect(() => {
     // Check if we have results in context
@@ -195,11 +205,13 @@ export default function DashboardPage() {
     const wallets = getWalletsWithActivity(results);
     const insights = getTransactionInsights(results, timelineGroupBy);
     const distribution = getTokenDistributionAnalysis(results);
+    const nfts = getNFTAnalytics(results);
 
     setOverviewStats(overview);
     setWalletsWithActivity(wallets);
     setTransactionInsights(insights);
     setTokenDistribution(distribution);
+    setNftAnalytics(nfts);
   }, [results, router, timelineGroupBy]);
 
   const handleClearResults = () => {
@@ -238,6 +250,12 @@ export default function DashboardPage() {
               isActive={activeTab === "ai"}
               onClick={() => setActiveTab("ai")}
             />
+            <Tab
+              id="nft"
+              label="NFT"
+              isActive={activeTab === "nft"}
+              onClick={() => setActiveTab("nft")}
+            />
           </div>
         </div>
 
@@ -256,6 +274,54 @@ export default function DashboardPage() {
             />
           )}
           {activeTab === "ai" && <QueryInterface />}
+          {activeTab === "nft" && nftAnalytics && (
+            <div className="space-y-8">
+              {/* NFT Adoption Section */}
+              <section>
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  📊 NFT Adoption
+                </h2>
+                <NFTAdoption data={nftAnalytics.adoption} />
+              </section>
+
+              {/* Top NFT Collections */}
+              <section>
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  🎨 Top Collections
+                </h2>
+                <TopNFTCollections collections={nftAnalytics.topCollections} />
+              </section>
+
+              {/* NFT Diversity & Spam Analysis */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <section>
+                  <h2 className="text-2xl font-bold text-white mb-4">
+                    🌈 Diversity
+                  </h2>
+                  <NFTDiversityMetricsCard
+                    data={nftAnalytics.diversityMetrics}
+                  />
+                </section>
+
+                <section>
+                  <h2 className="text-2xl font-bold text-white mb-4">
+                    🚫 Spam Analysis
+                  </h2>
+                  <SpamNFTAnalysis data={nftAnalytics.spamAnalysis} />
+                </section>
+              </div>
+
+              {/* Recent Acquisitions */}
+              <section>
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  🆕 Recent Acquisitions
+                </h2>
+                <RecentNFTAcquisitions
+                  acquisitions={nftAnalytics.recentAcquisitions}
+                />
+              </section>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
