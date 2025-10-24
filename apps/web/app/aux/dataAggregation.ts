@@ -15,11 +15,84 @@ export function hexToEth(hexBalance: string): number {
 }
 
 /**
+ * Calculate percentile rank of a value within an array
+ * Returns 0-1 where 1 = highest
+ */
+function calculatePercentile(value: number, allValues: number[]): number {
+  if (allValues.length === 0) return 0;
+  if (allValues.length === 1) return 0.5;
+  
+  const sorted = [...allValues].sort((a, b) => a - b);
+  const below = sorted.filter(v => v < value).length;
+  return below / allValues.length;
+}
+
+/**
+ * Calculate time-decayed score for transactions
+ * Uses exponential decay with 30-day half-life
+ */
+function calculateTimeDecayedScore(
+  transfers: any[],
+  now: Date,
+  extractValue: (transfer: any) => number = () => 1
+): number {
+  const halfLifeDays = 30;
+  const decayConstant = Math.log(2) / halfLifeDays;
+
+  // Skipping diagnostics
+  let skippedNoMetadata = 0;
+  let skippedNoBlockTimestamp = 0;
+  let skippedInvalidTimestamp = 0;
+
+  let sum = 0;
+  const totalTransfers = transfers.length;
+  for (const transfer of transfers) {
+    if (!transfer || !transfer.metadata) {
+      skippedNoMetadata++;
+      continue;
+    }
+    if (!transfer.metadata.blockTimestamp) {
+      skippedNoBlockTimestamp++;
+      continue;
+    }
+
+    const txTime = new Date(transfer.metadata.blockTimestamp).getTime();
+    if (Number.isNaN(txTime)) {
+      skippedInvalidTimestamp++;
+      continue;
+    }
+
+    const daysSince = (now.getTime() - txTime) / (1000 * 60 * 60 * 24);
+    const weight = Math.exp(-decayConstant * daysSince);
+    sum += extractValue(transfer) * weight;
+  }
+
+  // Log grouped skip reasons for testing (only when there are skips)
+  if (skippedNoMetadata || skippedNoBlockTimestamp || skippedInvalidTimestamp) {
+    const skippedTotal = skippedNoMetadata + skippedNoBlockTimestamp + skippedInvalidTimestamp;
+    console.log("[ActivityIndex] Skipped transfers in calculateTimeDecayedScore", {
+      totalTransfers,
+      processed: totalTransfers - skippedTotal,
+      skippedNoMetadata,
+      skippedNoBlockTimestamp,
+      skippedInvalidTimestamp,
+      skippedPercentage: totalTransfers > 0 ? Math.round((skippedTotal / totalTransfers) * 1000) / 10 : 0,
+    });
+  }
+
+  return sum;
+}
+
+/**
  * Calculate activity index (0-1) for a wallet based on multiple factors
+ * Uses percentile-based scaling and exponential time decay
  * 0 = completely inactive
  * 1 = very active
  */
-export function calculateActivityIndex(result: Result): number {
+export function calculateActivityIndex(
+  result: Result,
+  allResults: Result[]
+): number {
   const transfers = result.data.transfers;
 
   if (!transfers || transfers.length === 0) {
@@ -27,52 +100,109 @@ export function calculateActivityIndex(result: Result): number {
   }
 
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-  // Factor 1: Recent activity (30 days) - Weight: 35%
-  const recentTransactions = transfers.filter(
-    (t) => new Date(t.metadata.blockTimestamp) > thirtyDaysAgo
-  ).length;
-  const recentScore = Math.min(recentTransactions / 10, 1) * 0.35;
-
-  // Factor 2: Medium-term activity (90 days) - Weight: 25%
-  const ninetyDayTransactions = transfers.filter(
-    (t) => new Date(t.metadata.blockTimestamp) > ninetyDaysAgo
-  ).length;
-  const mediumTermScore = Math.min(ninetyDayTransactions / 30, 1) * 0.25;
-
-  // Factor 3: Transaction volume - Weight: 20%
-  const totalVolume = transfers.reduce((sum, t) => sum + (t.value || 0), 0);
-  const volumeScore = Math.min(totalVolume / 10, 1) * 0.2;
-
-  // Factor 4: Transaction frequency (total) - Weight: 15%
+  // Current wallet's metrics
   const totalTransactions = transfers.length;
-  const frequencyScore = Math.min(totalTransactions / 100, 1) * 0.15;
+  const totalVolume = transfers.reduce((sum, t) => sum + (t.value || 0), 0);
+  const decayedFrequency = calculateTimeDecayedScore(transfers, now);
+  const decayedVolume = calculateTimeDecayedScore(transfers, now, (t) => t.value || 0);
 
-  // Factor 5: Recency of last transaction - Weight: 5%
-  const sortedTransfers = [...transfers].sort(
-    (a, b) =>
-      new Date(b.metadata.blockTimestamp).getTime() -
-      new Date(a.metadata.blockTimestamp).getTime()
+  // Single wallet: use absolute scoring with reasonable thresholds
+  if (allResults.length === 1) {
+    // Factor 1: Time-decayed frequency - Weight: 40%
+    // Normalize: 10+ weighted transactions = 1.0
+    const frequencyScore = Math.min(decayedFrequency / 10, 1) * 0.4;
+
+    // Factor 2: Time-decayed volume - Weight: 30%
+    // Normalize: 5+ ETH weighted volume = 1.0
+    const volumeScore = Math.min(decayedVolume / 5, 1) * 0.3;
+
+    // Factor 3: Total transaction count - Weight: 15%
+    // Normalize: 50+ transactions = 1.0
+    const countScore = Math.min(totalTransactions / 50, 1) * 0.15;
+
+    // Factor 4: Total volume - Weight: 10%
+    // Normalize: 10+ ETH total = 1.0
+    const totalVolumeScore = Math.min(totalVolume / 10, 1) * 0.1;
+
+    // Factor 5: Smooth recency - Weight: 5%
+    let recencyScore = 0;
+    if (transfers.length > 0) {
+      let mostRecentTime = 0;
+      transfers.forEach(t => {
+        if (t.metadata && t.metadata.blockTimestamp) {
+          const txTime = new Date(t.metadata.blockTimestamp).getTime();
+          if (txTime > mostRecentTime) {
+            mostRecentTime = txTime;
+          }
+        }
+      });
+      if (mostRecentTime > 0) {
+        const daysSinceLastTx = (now.getTime() - mostRecentTime) / (1000 * 60 * 60 * 24);
+        const decayConstant = Math.log(2) / 90;
+        recencyScore = Math.exp(-decayConstant * daysSinceLastTx) * 0.05;
+      }
+    }
+
+    const totalScore = frequencyScore + volumeScore + countScore + totalVolumeScore + recencyScore;
+    return Math.round(totalScore * 1000) / 1000;
+  }
+
+  // Multiple wallets: use percentile-based scoring
+  const allTransferCounts = allResults.map(r => r.data.transfers.length);
+  const allVolumes = allResults.map(r => 
+    r.data.transfers.reduce((sum, t) => sum + (t.value || 0), 0)
+  );
+  
+  const allDecayedFrequencies = allResults.map(r => 
+    calculateTimeDecayedScore(r.data.transfers, now)
+  );
+  
+  const allDecayedVolumes = allResults.map(r => 
+    calculateTimeDecayedScore(r.data.transfers, now, (t) => t.value || 0)
   );
 
-  let recencyScore = 0;
-  if (sortedTransfers.length > 0) {
-    if (sortedTransfers[0]) {
-      const lastTxDate = new Date(sortedTransfers[0].metadata.blockTimestamp);
-      const daysSinceLastTx =
-        (now.getTime() - lastTxDate.getTime()) / (1000 * 60 * 60 * 24);
+  // Factor 1: Time-decayed transaction frequency - Weight: 40%
+  const frequencyPercentile = calculatePercentile(decayedFrequency, allDecayedFrequencies);
+  const frequencyScore = frequencyPercentile * 0.4;
 
-      if (daysSinceLastTx <= 7) recencyScore = 1 * 0.05;
-      else if (daysSinceLastTx <= 30) recencyScore = 0.7 * 0.05;
-      else if (daysSinceLastTx <= 90) recencyScore = 0.4 * 0.05;
-      else recencyScore = 0.1 * 0.05;
+  // Factor 2: Time-decayed transaction volume - Weight: 30%
+  const volumePercentile = calculatePercentile(decayedVolume, allDecayedVolumes);
+  const volumeScore = volumePercentile * 0.3;
+
+  // Factor 3: Total transaction count (lifetime) - Weight: 15%
+  const countPercentile = calculatePercentile(totalTransactions, allTransferCounts);
+  const countScore = countPercentile * 0.15;
+
+  // Factor 4: Total volume (lifetime) - Weight: 10%
+  const totalVolumePercentile = calculatePercentile(totalVolume, allVolumes);
+  const totalVolumeScore = totalVolumePercentile * 0.1;
+
+  // Factor 5: Smooth recency (days since last tx with exponential decay) - Weight: 5%
+  let recencyScore = 0;
+  if (transfers.length > 0) {
+    // Find most recent transaction with valid metadata
+    let mostRecentTime = 0;
+    
+    transfers.forEach(t => {
+      if (t.metadata && t.metadata.blockTimestamp) {
+        const txTime = new Date(t.metadata.blockTimestamp).getTime();
+        if (txTime > mostRecentTime) {
+          mostRecentTime = txTime;
+        }
+      }
+    });
+    
+    if (mostRecentTime > 0) {
+      const daysSinceLastTx = (now.getTime() - mostRecentTime) / (1000 * 60 * 60 * 24);
+      // Exponential decay with 90-day half-life
+      const decayConstant = Math.log(2) / 90;
+      recencyScore = Math.exp(-decayConstant * daysSinceLastTx) * 0.05;
     }
   }
 
   const totalScore =
-    recentScore + mediumTermScore + volumeScore + frequencyScore + recencyScore;
+    frequencyScore + volumeScore + countScore + totalVolumeScore + recencyScore;
 
   // Round to 3 decimal places
   return Math.round(totalScore * 1000) / 1000;
@@ -104,17 +234,48 @@ export function getLastActivityDate(result: Result): Date | null {
     return null;
   }
 
-  const sortedTransfers = [...transfers].sort(
-    (a, b) =>
-      new Date(b.metadata.blockTimestamp).getTime() -
-      new Date(a.metadata.blockTimestamp).getTime()
-  );
+  // Skipping diagnostics
+  let skippedNoMetadata = 0;
+  let skippedNoBlockTimestamp = 0;
+  let skippedInvalidTimestamp = 0;
 
-  if (sortedTransfers.length === 0) {
+  const validTimes: number[] = [];
+  const totalTransfers = transfers.length;
+  for (const t of transfers) {
+    if (!t || !t.metadata) {
+      skippedNoMetadata++;
+      continue;
+    }
+    if (!t.metadata.blockTimestamp) {
+      skippedNoBlockTimestamp++;
+      continue;
+    }
+    const time = new Date(t.metadata.blockTimestamp).getTime();
+    if (Number.isNaN(time)) {
+      skippedInvalidTimestamp++;
+      continue;
+    }
+    validTimes.push(time);
+  }
+
+  if (skippedNoMetadata || skippedNoBlockTimestamp || skippedInvalidTimestamp) {
+    const skippedTotal = skippedNoMetadata + skippedNoBlockTimestamp + skippedInvalidTimestamp;
+    console.log("[ActivityIndex] Skipped transfers in getLastActivityDate", {
+      totalTransfers,
+      processed: totalTransfers - skippedTotal,
+      skippedNoMetadata,
+      skippedNoBlockTimestamp,
+      skippedInvalidTimestamp,
+      skippedPercentage: totalTransfers > 0 ? Math.round((skippedTotal / totalTransfers) * 1000) / 10 : 0,
+    });
+  }
+
+  if (validTimes.length === 0) {
     return null;
   }
 
-  return new Date(sortedTransfers[0]!.metadata.blockTimestamp);
+  const mostRecentTime = Math.max(...validTimes);
+  return new Date(mostRecentTime);
 }
 
 /**
@@ -144,7 +305,7 @@ export function aggregateOverview(results: Result[]): OverviewStats {
 
   // Calculate activity indices
   const activityIndices = results.map((result) =>
-    calculateActivityIndex(result)
+    calculateActivityIndex(result, results)
   );
   const averageActivityIndex =
     activityIndices.reduce((sum, index) => sum + index, 0) / totalWallets;
@@ -172,7 +333,7 @@ export function getWalletsWithActivity(
 ): WalletWithActivity[] {
   return results
     .map((result) => {
-      const activityIndex = calculateActivityIndex(result);
+      const activityIndex = calculateActivityIndex(result, results);
       const transactionCount = result.data.transfers.length;
       const totalVolume = result.data.transfers.reduce(
         (sum, t) => sum + (t.value || 0),

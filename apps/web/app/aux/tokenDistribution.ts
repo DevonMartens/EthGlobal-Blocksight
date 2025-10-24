@@ -15,9 +15,22 @@ import { hexToEth } from "./dataAggregation";
  * Get wallet balance in ETH
  */
 function getWalletBalance(result: Result): number {
+  // Add null safety checks
+  if (!result || !result.data) {
+    return 0;
+  }
+  
+  if (!result.data.tokenBalances || !result.data.tokenBalances.data) {
+    return 0;
+  }
+  
   const tokens = result.data.tokenBalances.data.tokens;
-  const ethToken = tokens.find((token) => token.tokenAddress === null);
-  return ethToken ? hexToEth(ethToken.tokenBalance) : 0;
+  if (!tokens || !Array.isArray(tokens)) {
+    return 0;
+  }
+  
+  const ethToken = tokens.find((token) => token && token.tokenAddress === null);
+  return ethToken && ethToken.tokenBalance ? hexToEth(ethToken.tokenBalance) : 0;
 }
 
 /**
@@ -99,8 +112,8 @@ function calculateBalanceStatistics(balances: number[]): BalanceStatistics {
   const mid = Math.floor(sortedBalances.length / 2);
   const medianBalance =
     sortedBalances.length % 2 === 0
-      ? (sortedBalances[mid - 1] + sortedBalances[mid]) / 2
-      : sortedBalances[mid];
+      ? ((sortedBalances[mid - 1] || 0) + (sortedBalances[mid] || 0)) / 2
+      : (sortedBalances[mid] || 0);
 
   // Calculate standard deviation
   const squaredDifferences = balances.map((b) =>
@@ -190,7 +203,7 @@ function identifyWhales(results: Result[], limit: number = 10): WhaleWallet[] {
 
   const whales = results.map((result) => {
     const balance = getWalletBalance(result);
-    const activityIndex = calculateActivityIndex(result);
+    const activityIndex = calculateActivityIndex(result, results);
     const transactionCount = result.data.transfers.length;
 
     return {
@@ -266,7 +279,41 @@ function calculateConcentration(balances: number[]): ConcentrationMetrics {
 export function getTokenDistributionAnalysis(
   results: Result[]
 ): TokenDistributionAnalysis {
+  if (!results || results.length === 0) {
+    console.warn("[TokenDistribution] No results provided for analysis");
+    return {
+      distribution: [],
+      whales: [],
+      concentration: {
+        giniCoefficient: 0,
+        top10Percentage: 0,
+        top20Percentage: 0,
+        herfindahlIndex: 0,
+        concentrationLevel: "Very Low",
+      },
+      balanceStats: {
+        totalBalance: 0,
+        averageBalance: 0,
+        medianBalance: 0,
+        maxBalance: 0,
+        minBalance: 0,
+        standardDeviation: 0,
+      },
+    };
+  }
+
   const balances = results.map((result) => getWalletBalance(result));
+  
+  // Log diagnostics
+  const zeroBalances = balances.filter(b => b === 0).length;
+  if (zeroBalances > 0) {
+    console.log("[TokenDistribution] Balance extraction summary", {
+      totalWallets: results.length,
+      walletsWithBalance: results.length - zeroBalances,
+      walletsWithZeroBalance: zeroBalances,
+      zeroBalancePercentage: Math.round((zeroBalances / results.length) * 1000) / 10,
+    });
+  }
 
   return {
     distribution: createBalanceDistribution(balances),

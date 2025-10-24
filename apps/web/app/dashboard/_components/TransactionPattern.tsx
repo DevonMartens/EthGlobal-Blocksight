@@ -9,16 +9,17 @@ interface TransactionPatternsProps {
 export default function TransactionPatternsCard({
   data,
 }: TransactionPatternsProps) {
+  // Percentages should be based on VOLUME, not counts
+  const totalIOVolume = data.incomingVolume + data.outgoingVolume;
   const incomingPercentage =
-    data.totalIncoming + data.totalOutgoing > 0
-      ? (data.totalIncoming / (data.totalIncoming + data.totalOutgoing)) * 100
+    totalIOVolume > 0
+      ? (data.incomingVolume / totalIOVolume) * 100
       : 50;
 
+  const totalInternalExternalVolume = data.internalVolume + data.externalVolume;
   const internalPercentage =
-    data.internalTransactions + data.externalTransactions > 0
-      ? (data.internalTransactions /
-          (data.internalTransactions + data.externalTransactions)) *
-        100
+    totalInternalExternalVolume > 0
+      ? (data.internalVolume / totalInternalExternalVolume) * 100
       : 50;
 
   return (

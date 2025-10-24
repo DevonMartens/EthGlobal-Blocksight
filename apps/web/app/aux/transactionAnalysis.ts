@@ -38,9 +38,32 @@ export function buildTransactionTimeline(
 ): TimelineDataPoint[] {
   const timelineMap = new Map<string, { volume: number; count: number }>();
 
+  // Diagnostics for skipped transfers
+  let totalTransfers = 0;
+  let skippedNoMetadata = 0;
+  let skippedNoBlockTimestamp = 0;
+  let skippedInvalidTimestamp = 0;
+
   results.forEach((result) => {
     result.data.transfers.forEach((transfer) => {
-      const date = new Date(transfer.metadata.blockTimestamp);
+      totalTransfers++;
+
+      // Validate metadata
+      if (!transfer || !transfer.metadata) {
+        skippedNoMetadata++;
+        return;
+      }
+      if (!transfer.metadata.blockTimestamp) {
+        skippedNoBlockTimestamp++;
+        return;
+      }
+      const ts = new Date(transfer.metadata.blockTimestamp).getTime();
+      if (Number.isNaN(ts)) {
+        skippedInvalidTimestamp++;
+        return;
+      }
+
+      const date = new Date(ts);
       let key: string;
 
       if (groupBy === "day") {
@@ -62,6 +85,17 @@ export function buildTransactionTimeline(
       data.count += 1;
     });
   });
+
+  if (totalTransfers > 0 && (skippedNoMetadata || skippedNoBlockTimestamp || skippedInvalidTimestamp)) {
+    console.log("[Timeline] Skipped transfers in buildTransactionTimeline", {
+      totalTransfers,
+      processed: totalTransfers - (skippedNoMetadata + skippedNoBlockTimestamp + skippedInvalidTimestamp),
+      skippedNoMetadata,
+      skippedNoBlockTimestamp,
+      skippedInvalidTimestamp,
+      skippedPercentage: Math.round(((skippedNoMetadata + skippedNoBlockTimestamp + skippedInvalidTimestamp) / totalTransfers) * 1000) / 10,
+    });
+  }
 
   // Convert to array and sort by date
   const timeline = Array.from(timelineMap.entries())
@@ -102,8 +136,14 @@ export function getMostActiveWallets(
     const transfers = result.data.transfers;
     const address = result.address.toLowerCase();
 
-    const incoming = transfers.filter((t) => t.to.toLowerCase() === address);
-    const outgoing = transfers.filter((t) => t.from.toLowerCase() === address);
+    const incoming = transfers.filter((t) => {
+      const toAddr = (t && t.to ? t.to : "").toLowerCase();
+      return toAddr === address;
+    });
+    const outgoing = transfers.filter((t) => {
+      const fromAddr = (t && t.from ? t.from : "").toLowerCase();
+      return fromAddr === address;
+    });
 
     const incomingVolume = incoming.reduce((sum, t) => sum + (t.value || 0), 0);
     const outgoingVolume = outgoing.reduce((sum, t) => sum + (t.value || 0), 0);
@@ -119,7 +159,7 @@ export function getMostActiveWallets(
       incomingCount: incoming.length,
       outgoingCount: outgoing.length,
       averageTransactionSize: Math.round(averageTransactionSize * 1000) / 1000,
-      activityIndex: calculateActivityIndex(result),
+      activityIndex: calculateActivityIndex(result, results),
     };
   });
 
@@ -140,6 +180,8 @@ export function analyzeTransactionPatterns(
   let outgoingVolume = 0;
   let internalTransactions = 0;
   let externalTransactions = 0;
+  let internalVolume = 0;
+  let externalVolume = 0;
 
   const walletAddresses = new Set(results.map((r) => r.address.toLowerCase()));
 
@@ -147,8 +189,10 @@ export function analyzeTransactionPatterns(
     const address = result.address.toLowerCase();
 
     result.data.transfers.forEach((transfer) => {
-      const isIncoming = transfer.to.toLowerCase() === address;
-      const isOutgoing = transfer.from.toLowerCase() === address;
+      const safeTo = (transfer && transfer.to ? transfer.to : "").toLowerCase();
+      const safeFrom = (transfer && transfer.from ? transfer.from : "").toLowerCase();
+      const isIncoming = safeTo === address;
+      const isOutgoing = safeFrom === address;
 
       if (isIncoming) {
         totalIncoming++;
@@ -161,13 +205,15 @@ export function analyzeTransactionPatterns(
       }
 
       // Check if transaction is internal (between tracked wallets)
-      const fromTracked = walletAddresses.has(transfer.from.toLowerCase());
-      const toTracked = walletAddresses.has(transfer.to.toLowerCase());
+      const fromTracked = walletAddresses.has(safeFrom);
+      const toTracked = walletAddresses.has(safeTo);
 
       if (fromTracked && toTracked) {
         internalTransactions++;
+        internalVolume += transfer.value || 0;
       } else {
         externalTransactions++;
+        externalVolume += transfer.value || 0;
       }
     });
   });
@@ -187,6 +233,8 @@ export function analyzeTransactionPatterns(
         : 0,
     internalTransactions,
     externalTransactions,
+    internalVolume: Math.round(internalVolume * 1000) / 1000,
+    externalVolume: Math.round(externalVolume * 1000) / 1000,
   };
 }
 
