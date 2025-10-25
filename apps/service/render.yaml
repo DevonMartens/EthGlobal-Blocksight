@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: blocksight-backend
+    env: python
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ALCHEMY_API_KEY
+        sync: false
+      - key: BLOCKSIGHT_API_KEY
+        sync: false
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        fromGroup: web
+      - key: API_RELOAD
+        value: False
+      - key: PYTHON_VERSION
+        value: 3.10.0
