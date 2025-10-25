@@ -5,6 +5,10 @@ langchain-community
 langchain-core
 langchain-google-genai
 
+# MCP (Model Context Protocol)
+mcp
+langchain-mcp-adapters
+
 # Database
 SQLAlchemy
 psycopg2-binary
