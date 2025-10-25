@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { config } from "../aux/config";
 
 interface Message {
   id: string;
@@ -57,7 +58,7 @@ export default function ChatPage() {
 
     try {
       // Call the Blockscout chat API
-      const response = await fetch("http://localhost:8000/api/v1/chat", {
+      const response = await fetch(`${config.API_BASE_URL}/api/v1/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +83,8 @@ export default function ChatPage() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response || "I apologize, but I couldn't generate a response.",
+        content:
+          data.response || "I apologize, but I couldn't generate a response.",
         timestamp: new Date(),
       };
 
@@ -176,8 +178,8 @@ export default function ChatPage() {
                   message.role === "user"
                     ? "bg-blue-600 text-white"
                     : message.role === "system"
-                    ? "bg-gray-700 text-gray-300 border border-gray-600"
-                    : "bg-gray-800 text-white border border-gray-700"
+                      ? "bg-gray-700 text-gray-300 border border-gray-600"
+                      : "bg-gray-800 text-white border border-gray-700"
                 } rounded-lg p-4 shadow-lg`}
               >
                 <div className="flex items-start space-x-3">
@@ -201,16 +203,28 @@ export default function ChatPage() {
                   <div className="flex-1">
                     {message.role === "assistant" ? (
                       <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-600 prose-code:text-blue-300 prose-code:bg-gray-900 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-headings:text-white prose-strong:text-white prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-table:border prose-table:border-gray-600 prose-th:bg-gray-700 prose-td:border prose-td:border-gray-600">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            code: ({ node, inline, className, children, ...props }: any) => {
+                            code: ({
+                              node,
+                              inline,
+                              className,
+                              children,
+                              ...props
+                            }: any) => {
                               return inline ? (
-                                <code className="text-blue-300 bg-gray-900 px-1.5 py-0.5 rounded text-sm" {...props}>
+                                <code
+                                  className="text-blue-300 bg-gray-900 px-1.5 py-0.5 rounded text-sm"
+                                  {...props}
+                                >
                                   {children}
                                 </code>
                               ) : (
-                                <code className="block bg-gray-900 p-3 rounded border border-gray-600 overflow-x-auto text-sm" {...props}>
+                                <code
+                                  className="block bg-gray-900 p-3 rounded border border-gray-600 overflow-x-auto text-sm"
+                                  {...props}
+                                >
                                   {children}
                                 </code>
                               );
