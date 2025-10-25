@@ -24,12 +24,17 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -220,9 +225,11 @@ export default function ChatPage() {
                         {message.content}
                       </p>
                     )}
-                    <p className="text-xs opacity-60 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
+                    {mounted && (
+                      <p className="text-xs opacity-60 mt-2">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                    )}
                   </div>
                   {message.role === "user" && (
                     <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-400 rounded-full flex items-center justify-center flex-shrink-0">
