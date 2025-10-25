@@ -95,7 +95,8 @@ class WalletService:
             "toBlock": to_block,
             "category": category or ["external", "internal", "erc20", "erc721", "erc1155"],
             "withMetadata": True,
-            "maxCount": hex(max_count)
+            "maxCount": hex(max_count),
+            "order": "desc"
         }
         
         if from_address:

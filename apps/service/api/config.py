@@ -18,6 +18,9 @@ class Settings:
     # Google Gemini API Configuration
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     
+    # Blocksight API Configuration
+    BLOCKSIGHT_API_KEY: str = os.getenv("BLOCKSIGHT_API_KEY", "")
+
     # Alchemy API Configuration
     ALCHEMY_API_KEY: str = os.getenv("ALCHEMY_API_KEY", "")
     
