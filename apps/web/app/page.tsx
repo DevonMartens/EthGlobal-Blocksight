@@ -1,215 +1,162 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { ethers } from "ethers";
+import Link from "next/link";
 
 export default function Home() {
-  const [addresses, setAddresses] = useState<string>("");
-  const [network, setNetwork] = useState<"mainnet" | "sepolia">("mainnet");
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const validateAddresses = (addressList: string[]): string[] => {
-    const errors: string[] = [];
-
-    addressList.forEach((address, index) => {
-      const trimmedAddress = address.trim();
-      if (!trimmedAddress) return;
-
-      if (!ethers.isAddress(trimmedAddress)) {
-        errors.push(
-          `Invalid address at position ${index + 1}: ${trimmedAddress}`
-        );
-      }
-    });
-
-    return errors;
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setAddresses(value);
-
-    if (value.trim()) {
-      const addressList = value.split(/[,\s\n]+/).filter((addr) => addr.trim());
-      const errors = validateAddresses(addressList);
-      setValidationErrors(errors);
-    } else {
-      setValidationErrors([]);
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const lines = content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line);
-      const addressList = lines.flatMap((line) =>
-        line.split(/[,\s]+/).filter((addr) => addr.trim())
-      );
-
-      setAddresses(addressList.join("\n"));
-      const errors = validateAddresses(addressList);
-      setValidationErrors(errors);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleStartFetching = () => {
-    if (validationErrors.length > 0) {
-      alert("Please fix validation errors before proceeding");
-      return;
-    }
-
-    const addressList = addresses
-      .split(/[,\s\n]+/)
-      .filter((addr) => addr.trim());
-    if (addressList.length === 0) {
-      alert("Please enter at least one Ethereum address");
-      return;
-    }
-
-    // Navigate to data fetching page with addresses and network as URL params
-    const params = new URLSearchParams({
-      addresses: addressList.join(","),
-      network: network,
-      include_nft: "true",
-      max_transfers: "300",
-      direction: "both",
-    });
-
-    window.location.href = `/data-fetching?${params.toString()}`;
-  };
-
-  const isValid = validationErrors.length === 0 && addresses.trim().length > 0;
-
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="bg-gray-800 p-8 border border-gray-700">
-            <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="text-center mb-16">
+          <div className="bg-gray-800 p-10 border border-gray-700 rounded-lg">
+            <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Blocksight
             </h1>
-            <p className="text-gray-300 text-lg">
-              Analyze Ethereum addresses across networks
+            <p className="text-gray-300 text-xl">
+              Your Gateway to Blockchain Intelligence
             </p>
           </div>
         </div>
 
-        <div className="space-y-8">
-          {/* Address Input Section */}
-          <div className="bg-gray-800 p-8 border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-white">
-                Ethereum Addresses
-              </h2>
-
-              {/* Network Switch */}
-              <div className="flex items-center space-x-3">
-                <span
-                  className={`text-sm transition-colors ${
-                    network === "sepolia"
-                      ? "text-blue-400 font-semibold"
-                      : "text-gray-300"
-                  }`}
-                >
-                  Sepolia
-                </span>
-                <button
-                  onClick={() =>
-                    setNetwork(network === "mainnet" ? "sepolia" : "mainnet")
-                  }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                    network === "mainnet" ? "bg-blue-600" : "bg-gray-600"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      network === "mainnet" ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                <span
-                  className={`text-sm transition-colors ${
-                    network === "mainnet"
-                      ? "text-blue-400 font-semibold"
-                      : "text-gray-300"
-                  }`}
-                >
-                  Mainnet
-                </span>
+        {/* Two Path Options */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {/* Chat with Chain Card */}
+          <Link href="/chat" className="group">
+            <div className="bg-gray-800 border-2 border-gray-700 hover:border-blue-500 p-8 rounded-lg transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 transform hover:scale-105 h-full flex flex-col">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center mb-4">
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">
+                  Chat with Chain
+                </h2>
+                <p className="text-gray-400 text-lg mb-4">
+                  Ask natural language questions about any blockchain data
+                </p>
+              </div>
+              
+              <div className="mt-auto">
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">Powered by Blockscout</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">Real-time chain data</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">AI-powered responses</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center text-blue-400 font-semibold group-hover:text-blue-300">
+                  Start Chatting
+                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </div>
             </div>
+          </Link>
 
-            <div className="space-y-6">
+          {/* Deep Dive Analytics Card */}
+          <Link href="/analytics" className="group">
+            <div className="bg-gray-800 border-2 border-gray-700 hover:border-purple-500 p-8 rounded-lg transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 transform hover:scale-105 h-full flex flex-col">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-400 rounded-lg flex items-center justify-center mb-4">
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-purple-400 transition-colors">
+                  Deep Dive Analytics
+                </h2>
+                <p className="text-gray-400 text-lg mb-4">
+                  Comprehensive wallet analytics with advanced insights
+                </p>
+              </div>
+              
+              <div className="mt-auto">
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">Powered by Alchemy</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">Multi-wallet analysis</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-300">Transaction & NFT insights</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center text-purple-400 font-semibold group-hover:text-purple-300">
+                  Start Analysis
+                  <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Feature Highlights */}
+        <div className="mt-16 text-center">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <h3 className="text-2xl font-bold text-white mb-6">Why Blocksight?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Enter addresses (separated by space, comma, or new line)
-                </label>
-                <textarea
-                  value={addresses}
-                  onChange={handleTextChange}
-                  placeholder="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6&#10;0x8ba1f109551bD432803012645Hac136c22C23&#10;0x1234567890123456789012345678901234567890"
-                  className="w-full h-32 px-4 py-3 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                />
+                <div className="text-blue-400 font-semibold mb-2">🚀 Fast & Efficient</div>
+                <p className="text-gray-400 text-sm">Get instant insights from blockchain data with optimized queries</p>
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">
-                  Or upload a CSV file
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white text-sm transition-colors duration-200"
-                >
-                  Upload CSV
-                </button>
+              <div>
+                <div className="text-purple-400 font-semibold mb-2">🔒 Secure & Private</div>
+                <p className="text-gray-400 text-sm">Your data stays safe with read-only blockchain access</p>
+              </div>
+              <div>
+                <div className="text-pink-400 font-semibold mb-2">📊 Comprehensive</div>
+                <p className="text-gray-400 text-sm">From simple queries to deep analytics, we've got you covered</p>
               </div>
             </div>
-
-            {/* Validation Errors */}
-            {validationErrors.length > 0 && (
-              <div className="mt-6 p-4 bg-red-900/20 border border-red-500/30">
-                <h4 className="text-red-400 font-medium mb-2">
-                  Validation Errors:
-                </h4>
-                <ul className="text-red-300 text-sm space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>• {error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Start Fetching Button */}
-          <div className="text-center">
-            <button
-              onClick={handleStartFetching}
-              disabled={!isValid}
-              className={`px-8 py-4 font-semibold text-lg transition-all duration-200 ${
-                isValid
-                  ? "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
-                  : "bg-gray-700 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Start Fetching
-            </button>
           </div>
         </div>
       </main>

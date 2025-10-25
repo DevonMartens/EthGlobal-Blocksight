@@ -95,6 +95,28 @@ function DataFetchingContent() {
         }
 
         const data = await response.json();
+
+        // Debug: Log exactly what the API returned for this address
+        try {
+          console.groupCollapsed(`API Response for ${address}`);
+          console.log(data);
+          if (data?.transfers && Array.isArray(data.transfers)) {
+            console.log("transfers[] length:", data.transfers.length);
+            console.log("transfers[] sample:", data.transfers.slice(0, 3));
+          }
+          if (data?.transactions && Array.isArray(data.transactions)) {
+            console.log("transactions[] length:", data.transactions.length);
+            console.log("transactions[] sample:", data.transactions.slice(0, 3));
+          }
+          if (data?.nft_transfers && Array.isArray(data.nft_transfers)) {
+            console.log("nft_transfers[] length:", data.nft_transfers.length);
+            console.log("nft_transfers[] sample:", data.nft_transfers.slice(0, 3));
+          }
+          console.groupEnd();
+        } catch (e) {
+          // no-op: logging should not break the flow
+        }
+
         results.push({ address, data });
 
         clearInterval(progressInterval);
